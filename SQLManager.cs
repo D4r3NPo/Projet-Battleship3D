@@ -6,7 +6,6 @@ public class SQLManager
 
     public SQLManager(string server, string port, string database, string user, string password)
     {
-
         string connectionString = $"server={server};port={port};uid={user};pwd={password};database={database};";
 
         try
@@ -14,21 +13,17 @@ public class SQLManager
             _connection = new MySqlConnection(connectionString);
             Console.WriteLine("Connecting to the Server...");
             _connection.Open();
-        }
-        catch (MySqlException exception)
-        {
-            Console.WriteLine(exception.Message);
-        }
-        finally
-        {
             Console.WriteLine("Successfully connect to the Server");
+        }
+        catch (MySqlException e)
+        {
+            _connection = null!;
+            Console.WriteLine(e.Message);
+            Console.WriteLine("Fail to connect to the Server");
         }
     }
 
-    public void CloseConnection()
-    {
-        _connection.Close();
-    }
+    ~SQLManager() => _connection.Close();
 
     public int AddNewPlayer(string name, int age, string email)
     {
@@ -42,19 +37,37 @@ public class SQLManager
             command.Parameters.AddWithValue("@age", age);
             command.Parameters.AddWithValue("@mail", email);
             
-            int rowsAffected = command.ExecuteNonQuery();
-            Console.WriteLine("Row affected " + rowsAffected);
-        }
-        catch (MySqlException exeption)
-        {
-            Console.WriteLine(exeption.Message);
-        }
-        finally
-        {
+            command.ExecuteNonQuery();
             Console.WriteLine("Your account has been sucessfully created");
+
+        }
+        catch (MySqlException e)
+        {
+            Console.WriteLine(e.Message);
+            Console.WriteLine("Failed to create your account");
         }
         
         return GetPlayerId(name, email);
+    }
+
+    public int CreateParty()
+    {
+        try
+        {
+            string query = "INSERT INTO Gr5_partie (jeu_id, date_debut) VALUES ((SELECT jeu_id FROM Gr5_jeu WHERE nom = 'Battleship3D'),NOW()); SELECT LAST_INSERT_ID()";
+            MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
+            dataReader.Read();
+            int partyId = dataReader.GetInt32(0);
+            dataReader.Close();
+            Console.WriteLine("Party has been created");
+            return partyId;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            Console.WriteLine("Failed to create your party");
+            throw;
+        }
     }
 
     public int GetPlayerId(string name, string email)
@@ -63,28 +76,12 @@ public class SQLManager
         string safeEmail = MySqlHelper.EscapeString(email);
 
         string query = $"SELECT joueur_id FROM Gr5_joueur WHERE nom = '{safeName}' AND mail = '{safeEmail}';";
-        MySqlDataReader dataReader = ExecuteReaderQuery(query);
+        MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
         
         dataReader.Read();
         int playerId = dataReader.GetInt32(0);
         dataReader.Close();
         
         return playerId;
-    }
-
-    MySqlDataReader ExecuteReaderQuery(string query)
-    {
-        MySqlDataReader reader = null;
-        try
-        {
-            MySqlCommand command = new MySqlCommand(query, _connection);
-            reader = command.ExecuteReader();
-        }
-        catch (MySqlException exeption)
-        {
-            Console.WriteLine(exeption.Message);
-        }
-        
-        return reader;
     }
 }

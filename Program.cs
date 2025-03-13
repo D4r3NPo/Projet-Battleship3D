@@ -1,5 +1,5 @@
 ﻿// ✅ Ajouter un joueur
-// TODO Créer une partie
+// ✅ Créer une partie
 // TODO Initialiser une partie
 //      TODO Créer les vaisseaux
 //      TODO Configurer les vaisseaux
@@ -12,47 +12,79 @@
 
 using static System.Console;
 
-SQLManager databaseManager = new SQLManager("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
-MongoDBManager mongoDBManager = new MongoDBManager("AdminLJV","!!DBLjv1858**","81.1.20.23","27017");
+SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
+MongoDBManager mongoDB = new("AdminLJV","!!DBLjv1858**","81.1.20.23","27017");
+int playerId;
+int partyId;
 
-int playerId = 0;
-        
-WriteLine("Bienvenue sur Battleship X Pebble Dabble");
-WriteLine("[1] - Se connecter");
-WriteLine("[2] - S'inscrire");
+HomeMenu();
 
-string? input = ReadLine();
+return;
 
-switch (input)
+void HomeMenu()
 {
-    case "1":
-    {
-        WriteLine("Entrer votre nom :");
-        string name = ReadLine() ?? "Xx_Graou_xX";
-        
-        WriteLine("Entrer votre email :");
-        string email = ReadLine() ?? "default@email.com";
+    Clear();
+    WriteLine("Bienvenue sur Battleship");
+    WriteLine("——— Home ———");
+    WriteLine("    [1] - Se connecter");
+    WriteLine("    [2] - S'inscrire");
+    WriteLine("[Autre] - Quitter");
 
-        playerId = databaseManager.GetPlayerId(name, email);
-        break;
-    }
-    case "2":
+    string? command = ReadLine();
+        
+    switch (command)
     {
-        WriteLine("Entrer votre nom :");
-        string nom = ReadLine() ?? "Xx_Graou_xX";
-        WriteLine("Entrer votre age :");
-        int age = int.Parse(ReadLine() ?? "20");
-        WriteLine("Entrer votre email :");
-        string email = ReadLine() ?? "default@email.com";
-            
-        playerId = databaseManager.AddNewPlayer(nom, age, email);
-        break;
+        case "1": { Login(); break; }
+        case "2": { Register(); break; }
     }
-    default:
-        WriteLine("Tu te crois malin à avoir rentré autre chose que 1 ou 2 ? C'est pour tester le code ? Bah il n’y a pas de boucle si tu trompes, cheh, relance l'app");
-        ReadKey();
-        break;
 }
 
-        
-databaseManager.CloseConnection();
+void Register()
+{
+    Clear();
+    WriteLine("——— Register ———");
+    WriteLine("Entrer votre nom :");
+    string nom = ReadLine() ?? "Xx_Graou_xX";
+    WriteLine("Entrer votre age :");
+    int age = int.Parse(ReadLine() ?? "20");
+    WriteLine("Entrer votre email :");
+    string email = ReadLine() ?? "default@email.com";
+            
+    playerId = sqlDB.AddNewPlayer(nom, age, email);
+}
+
+void Login()
+{
+    Clear();
+    WriteLine("——— Login ———");
+    WriteLine("Entrer votre nom :");
+    string name = ReadLine() ?? "Xx_Graou_xX";
+
+    WriteLine("Entrer votre email :");
+    string email = ReadLine() ?? "default@email.com";
+
+    playerId = sqlDB.GetPlayerId(name, email);
+    
+    if (playerId != 0)
+        GameMenu();
+    else
+        WriteLine("Failed login. Quitting...");
+}
+
+void GameMenu()
+{
+    Clear();
+    WriteLine("——— Game ———");
+    WriteLine("    [1] - Créer un partie");
+    WriteLine("[Autre] - Quitter");
+    string command = ReadLine()?? "Quit";
+    switch (command)
+    {
+        case "1":
+        {
+            partyId = sqlDB.CreateParty();
+            break;
+        }
+    }
+}
+
