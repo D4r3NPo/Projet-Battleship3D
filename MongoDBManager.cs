@@ -1,5 +1,3 @@
-
-
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -8,8 +6,8 @@ public class MongoDBManager
     readonly MongoClient _client;
     readonly IMongoDatabase _database;
     readonly IMongoCollection<BsonDocument> _collection;
-    
-    public MongoDBManager(string username, string password, string address,string database)
+
+    public MongoDBManager(string username, string password, string address, string database)
     {
         string connectionString = $"mongodb://{username}:{password}@{address}:{database}/";
         _client = new MongoClient(connectionString);
@@ -57,5 +55,5 @@ public class MongoDBManager
 
         await _collection.UpdateOneAsync(filter, update);
     }
-    
+
 }
