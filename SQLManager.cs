@@ -1,39 +1,38 @@
 ﻿using MySql.Data.MySqlClient;
 
-public class SQLManager
+public class SqlManager
 {
-    private string server = "81.1.20.23";
-    private string port = "3306";
-    private string database = "USRS6N_1";
-    private string user = "EtudiantJvd";
-    private string password = "!?CnamNAQ01?!";
-    
-    private string connectionString;
-    private MySqlConnection connection;
+    const string Server = "81.1.20.23";
+    const string Port = "3306";
+    const string Database = "USRS6N_1";
+    const string User = "EtudiantJvd";
+    const string Password = "!?CnamNAQ01?!";
 
-    public SQLManager()
+    const string ConnectionString = $"server={Server};port={Port};uid={User};pwd={Password};database={Database};";
+
+    readonly MySqlConnection _connection;
+
+    public SqlManager()
     {
-        connectionString = $"server={server};port={port};uid={user};pwd={password};database={database};";
-
         try
         {
-            connection = new MySqlConnection(connectionString);
+            _connection = new MySqlConnection(ConnectionString);
             Console.WriteLine("Connecting to the Server...");
-            connection.Open();
+            _connection.Open();
         }
-        catch (MySqlException exeption)
+        catch (MySqlException exception)
         {
-            Console.WriteLine(exeption.Message);
+            Console.WriteLine(exception.Message);
         }
         finally
         {
-            Console.WriteLine("Sucessfully connected to the Server");
+            Console.WriteLine("Successfully connect to the Server");
         }
     }
     
     public void CloseConnection()
     {
-        connection.Close();
+        _connection.Close();
     }
 
     public int AddNewPlayer(string name, int age, string email)
@@ -42,7 +41,7 @@ public class SQLManager
         {
             string query = "INSERT INTO Gr5_joueur (nom, age, mail, victoire, date_inscription) VALUES (@name, @age, @mail, 0, CURDATE());";
             
-            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlCommand command = new MySqlCommand(query, _connection);
             
             command.Parameters.AddWithValue("@name", name);
             command.Parameters.AddWithValue("@age", age);
@@ -72,18 +71,18 @@ public class SQLManager
         MySqlDataReader dataReader = ExecuteReaderQuery(query);
         
         dataReader.Read();
-        int player_id = dataReader.GetInt32(0);
+        int playerId = dataReader.GetInt32(0);
         dataReader.Close();
         
-        return player_id;
+        return playerId;
     }
-    
-    private MySqlDataReader ExecuteReaderQuery(string query)
+
+    MySqlDataReader ExecuteReaderQuery(string query)
     {
         MySqlDataReader reader = null;
         try
         {
-            MySqlCommand command = new MySqlCommand(query, connection);
+            MySqlCommand command = new MySqlCommand(query, _connection);
             reader = command.ExecuteReader();
         }
         catch (MySqlException exeption)

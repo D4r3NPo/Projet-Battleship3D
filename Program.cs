@@ -1,37 +1,47 @@
-﻿SQLManager databaseManager = new SQLManager();
-int player_id = 0;
+﻿
+using static System.Console;
+
+SqlManager databaseManager = new SqlManager();
+
+int playerId = 0;
         
-Console.WriteLine("Bienvenue sur Battleship X Pebble Dabble");
-Console.WriteLine("[1] - Se connecter");
-Console.WriteLine("[2] - S'inscrire");
-string input = Console.ReadLine();
+WriteLine("Bienvenue sur Battleship X Pebble Dabble");
+WriteLine("[1] - Se connecter");
+WriteLine("[2] - S'inscrire");
 
-if (input == "1")
-{
-    Console.WriteLine("Entrer votre nom :");
-    string name = Console.ReadLine() ?? "Xx_Graou_xX";
-    Console.WriteLine("Entrer votre email :");
-    string email = Console.ReadLine() ?? "default@email.com";
+string? input = ReadLine();
 
-    player_id = databaseManager.GetPlayerId(name, email);
-} 
-else if (input == "2")
+switch (input)
 {
-    Console.WriteLine("Entrer votre nom :");
-    string nom = Console.ReadLine() ?? "Xx_Graou_xX";
-    Console.WriteLine("Entrer votre age :");
-    int age = int.Parse(Console.ReadLine() ?? "20");
-    Console.WriteLine("Entrer votre email :");
-    string email = Console.ReadLine() ?? "default@email.com";
+    case "1":
+    {
+        WriteLine("Entrer votre nom :");
+        string name = ReadLine() ?? "Xx_Graou_xX";
+        
+        WriteLine("Entrer votre email :");
+        string email = ReadLine() ?? "default@email.com";
+
+        playerId = databaseManager.GetPlayerId(name, email);
+        break;
+    }
+    case "2":
+    {
+        WriteLine("Entrer votre nom :");
+        string nom = ReadLine() ?? "Xx_Graou_xX";
+        WriteLine("Entrer votre age :");
+        int age = int.Parse(ReadLine() ?? "20");
+        WriteLine("Entrer votre email :");
+        string email = ReadLine() ?? "default@email.com";
             
-    player_id = databaseManager.AddNewPlayer(nom, age, email);
-}
-else
-{
-    Console.WriteLine("Tu te crois malin à avoir rentré autre chose que 1 ou 2 ? C'est pour tester le code ? Bah il n’y a pas de boucle si tu trompes, cheh, relance l'app");
-    Console.ReadKey();
+        playerId = databaseManager.AddNewPlayer(nom, age, email);
+        break;
+    }
+    default:
+        WriteLine("Tu te crois malin à avoir rentré autre chose que 1 ou 2 ? C'est pour tester le code ? Bah il n’y a pas de boucle si tu trompes, cheh, relance l'app");
+        ReadKey();
+        break;
 }
 
-PlayerManager playerManager = new PlayerManager(player_id);
+PlayerManager playerManager = new(playerId);
         
 databaseManager.CloseConnection();
