@@ -29,6 +29,15 @@ public class MongoDBManager
 
         await _collection.InsertOneAsync(document);
     }
+    
+    public async Task RemovePlayer(int playerId, int partyId)
+    {
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
+            Builders<BsonDocument>.Filter.Eq("Player_ID", playerId)
+        );
+        await _collection.DeleteOneAsync(filter);
+    }
 
     public async Task MovePlayer(int playerId, int partyId, (int x, int y, int z) position)
     {
@@ -56,4 +65,5 @@ public class MongoDBManager
         await _collection.UpdateOneAsync(filter, update);
     }
 
+    
 }

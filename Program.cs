@@ -14,6 +14,8 @@ using System.Text.RegularExpressions;
 using static System.Console;
 // ReSharper disable AccessToModifiedClosure
 
+const bool WithClear =  false;
+
 SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
 MongoDBManager mongoDB = new("AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
 int? playerId;
@@ -90,7 +92,7 @@ async Task Login()
     
     playerId = sqlDB.GetPlayerId(name, email);
 
-    if (playerId != 0)
+    if (playerId.HasValue)
         await GameMenu();
     else
         WriteLine("Failed login. Quitting...");
@@ -98,7 +100,7 @@ async Task Login()
 
 async Task GameMenu()
 {
-    while (playerId != 0)
+    while (playerId.HasValue)
     {
         Clear();
         WriteLine("——— Game ———");
@@ -114,7 +116,11 @@ async Task GameMenu()
                     partyId = sqlDB.CreateParty();
                     if (partyId.HasValue)
                     {
+                        int cachedPlayerId = playerId.Value;
+                        int cachedPartyId = partyId.Value;
+                        await mongoDB.AddPlayer(playerId.Value, partyId.Value);
                         await PartyMenu();
+                        await mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
                     }
                     break;
                 }
@@ -125,7 +131,8 @@ async Task GameMenu()
 
 async Task PartyMenu()
 {
-    while (partyId.HasValue)
+    // TODO Store Party info to limit player move etc...
+    while (partyId.HasValue && playerId.HasValue)
     {
         Clear();
         WriteLine("——— Party ———");
@@ -139,11 +146,7 @@ async Task PartyMenu()
             case "1":
                 {
                     var destination = Move();
-                    if (destination.HasValue)
-                    {
-                        WriteLine($"Move to {destination}");
-                        //await mongoDB.MovePlayer(playerId, partyId, move.Value);
-                    }
+                    if (destination.HasValue) await mongoDB.MovePlayer(playerId.Value, partyId.Value, destination.Value);
                     break;
                 }
             case "2":
@@ -161,6 +164,7 @@ async Task PartyMenu()
 
 (int x, int y, int z)? Move()
 {
+    // TODO Limit player move
     Clear();
     WriteLine("——— Move ———");
     WriteLine("Choisissez une destination (x,y,z)");
@@ -176,9 +180,9 @@ async Task PartyMenu()
             if (Regex.IsMatch(input, pattern))
             {
                 var match = Regex.Match(input, pattern);
-                int x = int.Parse(match.Groups[0].Value);
-                int y = int.Parse(match.Groups[1].Value);
-                int z = int.Parse(match.Groups[2].Value);
+                int x = int.Parse(match.Groups[1].Value);
+                int y = int.Parse(match.Groups[2].Value);
+                int z = int.Parse(match.Groups[3].Value);
                 return (x, y, z);
             }
 
@@ -187,3 +191,5 @@ async Task PartyMenu()
     }
     return null;
 }
+
+void Clear() { if (WithClear) Console.Clear(); }
