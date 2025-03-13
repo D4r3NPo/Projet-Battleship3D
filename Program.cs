@@ -8,10 +8,12 @@
 //      TODO Mouvement
 //      TODO Tir
 //      TODO Affichage du classement
+// TODO Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
 
 using static System.Console;
 
-SqlManager databaseManager = new SqlManager();
+SQLManager databaseManager = new SQLManager("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
+MongoDBManager mongoDBManager = new MongoDBManager("AdminLJV","!!DBLjv1858**","81.1.20.23","27017");
 
 int playerId = 0;
         
@@ -52,6 +54,5 @@ switch (input)
         break;
 }
 
-PlayerManager playerManager = new(playerId);
         
 databaseManager.CloseConnection();

@@ -1,22 +1,17 @@
 ﻿using MySql.Data.MySqlClient;
 
-public class SqlManager
+public class SQLManager
 {
-    const string Server = "81.1.20.23";
-    const string Port = "3306";
-    const string Database = "USRS6N_1";
-    const string User = "EtudiantJvd";
-    const string Password = "!?CnamNAQ01?!";
-
-    const string ConnectionString = $"server={Server};port={Port};uid={User};pwd={Password};database={Database};";
-
     readonly MySqlConnection _connection;
 
-    public SqlManager()
+    public SQLManager(string server, string port, string database, string user, string password)
     {
+
+        string connectionString = $"server={server};port={port};uid={user};pwd={password};database={database};";
+
         try
         {
-            _connection = new MySqlConnection(ConnectionString);
+            _connection = new MySqlConnection(connectionString);
             Console.WriteLine("Connecting to the Server...");
             _connection.Open();
         }
@@ -29,7 +24,7 @@ public class SqlManager
             Console.WriteLine("Successfully connect to the Server");
         }
     }
-    
+
     public void CloseConnection()
     {
         _connection.Close();
