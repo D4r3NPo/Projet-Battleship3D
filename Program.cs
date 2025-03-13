@@ -1,4 +1,14 @@
-﻿
+﻿// ✅ Ajouter un joueur
+// TODO Créer une partie
+// TODO Initialiser une partie
+//      TODO Créer les vaisseaux
+//      TODO Configurer les vaisseaux
+// TODO Lancer une partie
+// TODO Déroulement d'une partie
+//      TODO Mouvement
+//      TODO Tir
+//      TODO Affichage du classement
+
 using static System.Console;
 
 SqlManager databaseManager = new SqlManager();
