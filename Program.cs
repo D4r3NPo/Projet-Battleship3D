@@ -10,22 +10,24 @@
 //      TODO Affichage du classement
 // TODO Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
 
+using System.Drawing;
 using System.Text.RegularExpressions;
 using static System.Console;
 // ReSharper disable AccessToModifiedClosure
 
-const bool WithClear =  false;
+const bool WithClear =  true;
 
 SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
 MongoDBManager mongoDB = new("AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
 int? playerId;
 int? partyId;
+List<int> partyIds = [];
 
-await HomeMenu();
+HomeMenu();
 
 return;
 
-async Task HomeMenu()
+void HomeMenu()
 {
     string? command = null;
     while (command == null)
@@ -40,7 +42,7 @@ async Task HomeMenu()
         command = ReadLine();
         switch (command)
         {
-            case "1": { await Login(); break; }
+            case "1": { Login(); break; }
             case "2": { Register(); break; }
             case "q":
                 {
@@ -77,7 +79,7 @@ void Register()
     playerId = sqlDB.AddNewPlayer(nom, age, email);
 }
 
-async Task Login()
+void Login()
 {
     Clear();
     WriteLine("——— Login ———");
@@ -93,12 +95,12 @@ async Task Login()
     playerId = sqlDB.GetPlayerId(name, email);
 
     if (playerId.HasValue)
-        await GameMenu();
+        GameMenu();
     else
         WriteLine("Failed login. Quitting...");
 }
 
-async Task GameMenu()
+void GameMenu()
 {
     while (playerId.HasValue)
     {
@@ -112,26 +114,59 @@ async Task GameMenu()
         switch (command)
         {
             case "1":
+                partyId = sqlDB.CreateParty(7);
+                if (partyId.HasValue)
                 {
-                    partyId = sqlDB.CreateParty();
-                    if (partyId.HasValue)
-                    {
-                        int cachedPlayerId = playerId.Value;
-                        int cachedPartyId = partyId.Value;
-                        await mongoDB.AddPlayer(playerId.Value, partyId.Value);
-                        await PartyMenu();
-                        await mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
-                    }
-                    break;
+                    int cachedPlayerId = playerId.Value;
+                    int cachedPartyId = partyId.Value;
+                    mongoDB.AddPlayer(playerId.Value, partyId.Value);
+                    PartyMenu();
+                    mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
                 }
-            case "q": { playerId = null; break; }
+                break;
+            case "2":
+                Clear();
+                partyIds = sqlDB.GetPartyList();
+                WriteLine("——— Parties ———");
+                foreach (int party in partyIds)
+                    WriteLine($"Party Id: [{party}]");
+                WriteLine("[Any] to quit");
+                ReadKey();
+                break;
+            case "3":
+                string? choice = null;
+                while (choice == null)
+                {
+                    Clear();
+                    WriteLine("——— Join ———");
+                    WriteLine("Enter partyId to join :");
+                    WriteLine("[q] - Quitter]");
+                    choice = ReadLine();
+                    if (choice != null)
+                    {
+                        if (int.TryParse(choice, out int id) && partyIds.Contains(id))
+                        {
+                            partyId = id;
+                            int cachedPlayerId = playerId.Value;
+                            int cachedPartyId = partyId.Value;
+                            mongoDB.AddPlayer(playerId.Value, partyId.Value);
+                            PartyMenu();
+                            mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
+                        }
+                    }
+                }
+                break;
+            case "q":
+            {
+                playerId = null;
+                break;
+            }
         }
     }
 }
 
-async Task PartyMenu()
+void PartyMenu()
 {
-    // TODO Store Party info to limit player move etc...
     while (partyId.HasValue && playerId.HasValue)
     {
         Clear();
@@ -145,30 +180,49 @@ async Task PartyMenu()
         {
             case "1":
                 {
-                    var destination = Move();
-                    if (destination.HasValue) await mongoDB.MovePlayer(playerId.Value, partyId.Value, destination.Value);
+                    var destination = ReadMove();
+                    if (destination.HasValue) mongoDB.MovePlayer(playerId.Value, partyId.Value, destination.Value);
                     break;
                 }
             case "2":
                 {
-                    throw new NotImplementedException();
+                    var direction = ReadDirection();
+                    if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value, direction.Value);
+                    break;
                 }
             case "3":
                 {
-                    throw new NotImplementedException();
+                    var scores = mongoDB.GetScores(partyId.Value);
+                    WriteLine("——— Score ———");
+                    foreach (var scoreEntry in scores) 
+                        WriteLine($"{scoreEntry.playerName}|{scoreEntry.score}");
+                    break;
                 }
             case "q": { partyId = null; break; }
         }
     }
 }
 
-(int x, int y, int z)? Move()
+Vector3? ReadMove()
 {
-    // TODO Limit player move
     Clear();
     WriteLine("——— Move ———");
     WriteLine("Choisissez une destination (x,y,z)");
     WriteLine("ou appuyez sur [q] pour annuler");
+    return ReadVector3(); // TODO Limit player move
+}
+
+Vector3? ReadDirection()
+{
+    Clear();
+    WriteLine("——— Direction ———");
+    WriteLine("Choisissez une direction (x,y,z)");
+    WriteLine("ou appuyez sur [q] pour annuler");
+    return ReadVector3();
+}
+
+Vector3? ReadVector3()
+{
     string? input = null;
     while (input == null)
     {
@@ -183,7 +237,7 @@ async Task PartyMenu()
                 int x = int.Parse(match.Groups[1].Value);
                 int y = int.Parse(match.Groups[2].Value);
                 int z = int.Parse(match.Groups[3].Value);
-                return (x, y, z);
+                return new(x, y, z);
             }
 
             input = null;
@@ -192,4 +246,9 @@ async Task PartyMenu()
     return null;
 }
 
-void Clear() { if (WithClear) Console.Clear(); }
+void Clear()
+{
+    if (WithClear) Console.Clear();
+}
+
+

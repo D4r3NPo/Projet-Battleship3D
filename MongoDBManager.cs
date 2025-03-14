@@ -15,7 +15,7 @@ public class MongoDBManager
         _collection = _database.GetCollection<BsonDocument>("Gr5_Personnage");
     }
 
-    public async Task AddPlayer(int playerId, int partyId)
+    public void AddPlayer(int playerId, int partyId)
     {
         var document = new BsonDocument
         {
@@ -27,19 +27,19 @@ public class MongoDBManager
             { "Nb_Vaisseau_Destroy", 0 }
         };
 
-        await _collection.InsertOneAsync(document);
+        _collection.InsertOne(document);
     }
     
-    public async Task RemovePlayer(int playerId, int partyId)
+    public void RemovePlayer(int playerId, int partyId)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
             Builders<BsonDocument>.Filter.Eq("Player_ID", playerId)
         );
-        await _collection.DeleteOneAsync(filter);
+        _collection.DeleteOne(filter);
     }
 
-    public async Task MovePlayer(int playerId, int partyId, (int x, int y, int z) position)
+    public void MovePlayer(int playerId, int partyId, Vector3 position)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
@@ -50,10 +50,10 @@ public class MongoDBManager
             .Set("Position", new BsonDocument { { "x", position.x }, { "y", position.y }, { "z", position.z } })
             .Push("Move_History", new BsonDocument { { "x", position.x }, { "y", position.y }, { "z", position.z } });
 
-        await _collection.UpdateOneAsync(filter, update);
+        _collection.UpdateOne(filter, update);
     }
 
-    public async Task AddTir(int playerId, int partyId)
+    public void Shoot(int playerId, int partyId, Vector3 direction)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
@@ -62,8 +62,27 @@ public class MongoDBManager
 
         var update = Builders<BsonDocument>.Update.Inc("Nb_Tir", 1);
 
-        await _collection.UpdateOneAsync(filter, update);
+        _collection.UpdateOne(filter, update);
     }
 
-    
+    public List<(string playerName, int score)> GetScores(int partyId)
+    {
+        List<(string playerName, int score)> scores = [];
+        
+        var pipeline = new[]
+        {
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", "$PlayerID" },
+                { "totalDestroyed", new BsonDocument("$sum", "$NbVaisseauDestroy") }
+            }),
+            new BsonDocument("$sort", new BsonDocument("totalDestroyed", -1))
+        };
+
+        List<BsonDocument> results = _collection.Aggregate<BsonDocument>(pipeline).ToList();
+
+        Console.WriteLine(results);
+        
+        return scores;
+    }
 }

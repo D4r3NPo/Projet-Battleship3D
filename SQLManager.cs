@@ -1,4 +1,5 @@
 ﻿using MySql.Data.MySqlClient;
+using Projet4;
 
 public class SQLManager
 {
@@ -50,15 +51,23 @@ public class SQLManager
         return GetPlayerId(name, email);
     }
 
-    public int CreateParty()
+    public int CreateParty(int mapSize)
     {
+        string shipsPosition = GameManager.Create3DShips(mapSize);
+        Console.WriteLine(shipsPosition);
         try
         {
-            string query = "INSERT INTO Gr5_partie (jeu_id, date_debut) VALUES ((SELECT jeu_id FROM Gr5_jeu WHERE nom = 'Battleship3D'),NOW()); SELECT LAST_INSERT_ID()";
-            MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
+            string query = "INSERT INTO Gr5_partie (jeu_id, date_debut, ship_position, map_size) VALUES ((SELECT jeu_id FROM Gr5_jeu WHERE nom = 'Battleship3D'),NOW(),@shipsPosition,@mapSize); SELECT LAST_INSERT_ID()";
+            
+            MySqlCommand command = new MySqlCommand(query, _connection);
+            
+            command.Parameters.AddWithValue("@shipsPosition", shipsPosition);
+            command.Parameters.AddWithValue("@mapSize", mapSize);
+            
+            using MySqlDataReader dataReader = command.ExecuteReader();
+            
             dataReader.Read();
             int partyId = dataReader.GetInt32(0);
-            dataReader.Close();
             Console.WriteLine("Party has been created");
             return partyId;
         }
@@ -76,12 +85,30 @@ public class SQLManager
         string safeEmail = MySqlHelper.EscapeString(email);
 
         string query = $"SELECT joueur_id FROM Gr5_joueur WHERE nom = '{safeName}' AND mail = '{safeEmail}';";
-        MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
-        
+        using MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
         dataReader.Read();
         int playerId = dataReader.GetInt32(0);
-        dataReader.Close();
-        
         return playerId;
+    }
+
+    public List<int> GetPartyList()
+    {
+        List<int> partyIds = [];
+        
+        string query = "SELECT partie_id FROM Gr5_partie WHERE state='InProgress'";
+        
+        using MySqlDataReader result = new MySqlCommand(query, _connection).ExecuteReader();
+        
+        while(result.Read()) {
+            int id = (int)result["partie_id"];
+            partyIds.Add(id);
+        }
+        
+        return partyIds;
+    }
+
+    public List<Vector3> GetShipsPosition()
+    {
+        return default;
     }
 }
