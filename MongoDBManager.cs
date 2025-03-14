@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Projet4;
 
 public class MongoDBManager
 {
@@ -12,25 +13,32 @@ public class MongoDBManager
     {
         string connectionString = $"mongodb://{username}:{password}@{address}:{database}/";
         _client = new MongoClient(connectionString);
-        _database = _client.GetDatabase("myDatabase");
+        _database = _client.GetDatabase("USRS6N_2025");
         _personnages = _database.GetCollection<BsonDocument>("Gr5_Personnage");
         _ships = _database.GetCollection<BsonDocument>("Gr5_Ships");
     }
 
     public void AddPlayer(int playerId, int partyId)
     {
-        var defaultPosition = new BsonDocument { { "x", 7 }, { "y", 7 }, { "z", 7 } };
-        var document = new BsonDocument
+        bool exist = false; // TODO
+        if (exist)
         {
-            { "Player_ID", playerId },
-            { "Partie_ID", partyId },
-            { "Position", defaultPosition },
-            { "Nb_Tir", 0 },
-            { "Move_History", new BsonArray {defaultPosition} },
-            { "Nb_Vaisseau_Destroy", 0 }
-        };
-
-        _personnages.InsertOne(document);
+            // TODO
+        }
+        else
+        {
+            var defaultPosition = new BsonDocument { { "x", 0 }, { "y", 0 }, { "z", 0 } };
+            var document = new BsonDocument
+            {
+                { "Player_ID", playerId },
+                { "Partie_ID", partyId },
+                { "Position", defaultPosition },
+                { "Nb_Tir", 0 },
+                { "Move_History", new BsonArray {defaultPosition} },
+                { "Nb_Vaisseau_Destroy", 0 }
+            };
+            _personnages.InsertOne(document);
+        }
     }
     
     public void RemovePlayer(int playerId, int partyId)
@@ -42,6 +50,12 @@ public class MongoDBManager
         _personnages.DeleteOne(filter);
     }
 
+    public Vector3 GetPlayerPosition(int partyId, int playerId)
+    {
+        // TODO
+        throw new NotImplementedException();
+    }
+    
     public void MovePlayer(int playerId, int partyId, Vector3 position)
     {
         var filter = Builders<BsonDocument>.Filter.And(
@@ -56,12 +70,25 @@ public class MongoDBManager
         _personnages.UpdateOne(filter, update);
     }
 
-    public void Shoot(int playerId, int partyId, Vector3 direction)
+    public bool Shoot(int playerId, int partyId, Vector3 from, Vector3 toward)
     {
         RegisterShootForPlayer(playerId, partyId);
+        
+        List<List<Vector3>> shipsPositions = GetShipsPositions(partyId);
+        Vector3? positionHit = GameManager.HasShootCollide(from, toward, shipsPositions);
+
+        if (positionHit == null)
+            return false;
+        
+        foreach (var shipPositions in shipsPositions)
+            shipPositions.Remove(from);
+        
+        UpdateShipPosition(partyId, shipsPositions);
+        
+        return true;
     }
 
-    private void RegisterShootForPlayer(int playerId, int partyId)
+    void RegisterShootForPlayer(int playerId, int partyId)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
@@ -124,5 +151,17 @@ public class MongoDBManager
         var update = Builders<BsonDocument>.Update.Inc("Ships_Position", Vector3Converter.ConvertListOfListsToBsonArray(positions));
 
         _ships.UpdateOne(filter, update);
+    }
+
+    public int GetShipCount(int partyId)
+    {
+        // TODO
+        throw new NotImplementedException();
+    }
+
+    public int GetScore(int partyId, int playerId)
+    {
+        // TODO
+        throw new NotImplementedException();
     }
 }

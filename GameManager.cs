@@ -63,28 +63,17 @@ public class GameManager
         int startPos1 = random.Next(0, mapSize - squareSize + 1);
         int startPos2 = random.Next(0, mapSize - squareSize + 1);
 
-        List<Vector3> vector3List = new List<Vector3>();
+        List<Vector3> vector3List = [];
         
         for (int i = startPos1; i < startPos1 + squareSize; i++)
-        {
-            for (int j = startPos2; j < startPos2 + squareSize; j++)
-            {
-                Vector3 point;
-                switch (plane)
-                {
-                    case 0:
-                        point = new Vector3(constant, i, j);
-                        break;
-                    case 1:
-                        point = new Vector3(i, constant, j);
-                        break;
-                    default:
-                        point = new Vector3(i, j, constant);
-                        break;
-                }
-                vector3List.Add(point);
-            }
-        }
+        for (int j = startPos2; j < startPos2 + squareSize; j++)
+            vector3List.Add(
+                plane switch {
+                0 => new Vector3(constant, i, j),
+                1 => new Vector3(i, constant, j),
+                _ => new Vector3(i, j, constant)
+            });
+        
         return vector3List;
     }
 
@@ -105,8 +94,78 @@ public class GameManager
         return vector3List;
     }
 
-    public static Vector3? ShootAsCollide()
+    public static Vector3? HasShootCollide(Vector3 playerPosition, Vector3 direction, List<List<Vector3>> shipsPositions)
     {
-        
-    } 
+        float minT = float.MaxValue;
+        Vector3? hitPosition = null;
+
+        foreach (var ship in shipsPositions)
+        {
+            foreach (var cell in ship)
+            {
+                if (TryGetIntersectionParameter(playerPosition, direction, cell, out float t))
+                {
+                    if (t < minT)
+                    {
+                        minT = t;
+                        hitPosition = cell;
+                    }
+                }
+            }
+        }
+
+        return hitPosition;
+    }
+    
+    private static bool TryGetIntersectionParameter(Vector3 playerPosition, Vector3 direction, Vector3 target, out float t)
+    {
+        t = 0;
+        bool tDefined = false;
+        const float epsilon = 1e-6f;
+
+        if (Math.Abs(direction.x) > epsilon)
+        {
+            float tx = (target.x - playerPosition.x) / direction.x;
+            if (tx < 0)
+                return false;
+            t = tx;
+            tDefined = true;
+        }
+        else if (Math.Abs(target.x - playerPosition.x) > epsilon)
+        {
+            return false;
+        }
+
+        if (Math.Abs(direction.y) > epsilon)
+        {
+            float ty = (target.y - playerPosition.y) / direction.y;
+            if (ty < 0)
+                return false;
+            if (tDefined && Math.Abs(ty - t) > epsilon)
+                return false;
+            t = ty;
+            tDefined = true;
+        }
+        else if (Math.Abs(target.y - playerPosition.y) > epsilon)
+        {
+            return false;
+        }
+
+        if (Math.Abs(direction.z) > epsilon)
+        {
+            float tz = (target.z - playerPosition.z) / direction.z;
+            if (tz < 0)
+                return false;
+            if (tDefined && Math.Abs(tz - t) > epsilon)
+                return false;
+            t = tz;
+            tDefined = true;
+        }
+        else if (Math.Abs(target.z - playerPosition.z) > epsilon)
+        {
+            return false;
+        }
+
+        return tDefined;
+    }
 }

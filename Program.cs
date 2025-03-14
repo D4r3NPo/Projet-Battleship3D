@@ -3,14 +3,14 @@
 // ✅ Initialiser une partie
 //      ✅ Créer les vaisseaux
 //      ✅ Configurer les vaisseaux
-// TODO Lancer une partie
-// TODO Quitter une partie
-// TODO Reprendre un partie
-// TODO Déroulement d'une partie
-//      TODO Mouvement
-//      TODO Tir
+// ✅ Lancer une partie
+// ✅ Quitter une partie
+// ✅ Reprendre un partie
+// ⌛️ Déroulement d'une partie
+//      ⌛ Mouvement
+//      ⌛ Tir
 //      TODO Affichage du classement
-// TODO Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
+// ❌ Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
 
 
 using System.Text.RegularExpressions;
@@ -162,12 +162,18 @@ void PartyMenu()
 {
     while (partyId.HasValue && playerId.HasValue)
     {
+        Vector3 position = mongoDB.GetPlayerPosition(partyId.Value, playerId.Value);
+        int shipCount = mongoDB.GetShipCount(partyId.Value);
+        int score = mongoDB.GetScore(partyId.Value, playerId.Value);
         Clear();
         WriteLine("——— Party ———");
-        WriteLine("[1] - Se déplacer");
-        WriteLine("[2] - Tirer");
-        WriteLine("[3] - Afficher les scores");
-        WriteLine("[q] - Quitter");
+        WriteLine($"  Location: {position}");
+        WriteLine($"     Score: {score}");
+        WriteLine($"Ship alive: {shipCount}");
+        WriteLine("       [1] - Se déplacer");
+        WriteLine("       [2] - Tirer");
+        WriteLine("       [3] - Afficher les scores");
+        WriteLine("       [q] - Quitter");
         string command = ReadLine() ?? "Quit";
         switch (command)
         {
@@ -180,7 +186,7 @@ void PartyMenu()
             case "2":
             {
                 var direction = ReadDirection();
-                if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value, direction.Value);
+                if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value,position, direction.Value);
                 break;
             }
             case "3":
@@ -213,8 +219,6 @@ Vector3? ReadDirection()
     WriteLine("ou appuyez sur [q] pour annuler");
     return ReadVector3();
 }
-
-
 
 void Clear()
 {
@@ -252,9 +256,8 @@ Vector3? ReadVector3()
                 int x = int.Parse(match.Groups[1].Value);
                 int y = int.Parse(match.Groups[2].Value);
                 int z = int.Parse(match.Groups[3].Value);
-                return new(x, y, z);
+                return new Vector3(x, y, z);
             }
-
             input = null;
         }
     }
