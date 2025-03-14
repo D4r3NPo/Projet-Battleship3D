@@ -28,6 +28,7 @@ public class SQLManager
 
     public int AddNewPlayer(string name, int age, string email)
     {
+        // TODO check if existing
         try
         {
             string query = "INSERT INTO Gr5_joueur (nom, age, mail, victoire, date_inscription) VALUES (@name, @age, @mail, 0, CURDATE());";
@@ -51,7 +52,7 @@ public class SQLManager
         return GetPlayerId(name, email);
     }
 
-    public int CreateParty(int mapSize)
+    public int? CreateParty(int mapSize)
     {
         string shipsPosition = GameManager.Create3DShips(mapSize);
         Console.WriteLine(shipsPosition);
@@ -75,19 +76,23 @@ public class SQLManager
         {
             Console.WriteLine(e);
             Console.WriteLine("Failed to create your party");
-            throw;
+            return null;
         }
     }
 
     public int GetPlayerId(string name, string email)
     {
-        string safeName = MySqlHelper.EscapeString(name);
-        string safeEmail = MySqlHelper.EscapeString(email);
-
-        string query = $"SELECT joueur_id FROM Gr5_joueur WHERE nom = '{safeName}' AND mail = '{safeEmail}';";
-        using MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
+        string query = "SELECT joueur_id FROM Gr5_joueur WHERE nom = @name AND mail = @email;";
+        
+        MySqlCommand command = new MySqlCommand(query, _connection);
+        
+        command.Parameters.AddWithValue("@name", name);
+        command.Parameters.AddWithValue("@email", email);
+        
+        using MySqlDataReader dataReader = command.ExecuteReader();
         dataReader.Read();
         int playerId = dataReader.GetInt32(0);
+        dataReader.Close();
         return playerId;
     }
 
@@ -107,7 +112,23 @@ public class SQLManager
         return partyIds;
     }
 
-    public List<Vector3> GetShipsPosition()
+    public List<List<Vector3>> GetInitialShipsPositions(int partieId)
+    {
+        string query = "SELECT ship_position FROM Gr5_partie WHERE partie_id = @partieId;";
+        
+        MySqlCommand command = new MySqlCommand(query, _connection);
+        
+        command.Parameters.AddWithValue("@partieId", partieId);
+        
+        using MySqlDataReader result = command.ExecuteReader();
+        result.Read();
+        string shipsPosition = result.GetString(0);
+        result.Close();
+
+        return Vector3Converter.ParseJsonToListOfListVector3(shipsPosition);
+    }
+    
+    public List<List<Vector3>> GetShipsPositions(int partieId)
     {
         return default;
     }

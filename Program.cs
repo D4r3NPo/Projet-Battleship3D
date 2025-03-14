@@ -1,26 +1,28 @@
 // ✅ Ajouter un joueur
 // ✅ Créer une partie
-// TODO Initialiser une partie
-//      TODO Créer les vaisseaux
-//      TODO Configurer les vaisseaux
+// ✅ Initialiser une partie
+//      ✅ Créer les vaisseaux
+//      ✅ Configurer les vaisseaux
 // TODO Lancer une partie
+// TODO Quitter une partie
+// TODO Reprendre un partie
 // TODO Déroulement d'une partie
 //      TODO Mouvement
 //      TODO Tir
 //      TODO Affichage du classement
 // TODO Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
 
-using System.Drawing;
+
 using System.Text.RegularExpressions;
 using static System.Console;
 // ReSharper disable AccessToModifiedClosure
 
-const bool WithClear =  true;
+const bool withClear = false;
 
 SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
 MongoDBManager mongoDB = new("AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
-int? playerId;
-int? partyId;
+int? playerId = null;
+int? partyId = null;
 List<int> partyIds = [];
 
 HomeMenu();
@@ -38,44 +40,24 @@ void HomeMenu()
         WriteLine("[1] - Se connecter");
         WriteLine("[2] - S'inscrire");
         WriteLine("[q] - Quitter");
-
-        command = ReadLine();
-        switch (command)
+        
+        switch (command = ReadLine())
         {
-            case "1": { Login(); break; }
-            case "2": { Register(); break; }
-            case "q":
-                {
-                    Clear();
-                    WriteLine("Quiting...");
-                    break;
-                }
-            default:
-                command = null;
-                break;
+            case "1": { Login(); command = null; break; }
+            case "2": { Register(); command = null; break; }
+            case "q": { Clear(); WriteLine("Quiting..."); break; }
+            default: command = null; break;
         }
     }
-
-
 }
 
 void Register()
 {
     Clear();
     WriteLine("——— Register ———");
-    WriteLine("Entrer votre nom :");
-    string? nom = ReadLine();
-    if (string.IsNullOrEmpty(nom)) nom = "Xx_Graou_xX";
-    
-    WriteLine("Entrer votre age :");
-    string? ageAsString = ReadLine();
-    if (string.IsNullOrEmpty(ageAsString)) ageAsString = "20";
-    int age = int.TryParse(ageAsString, out int ageAsInt) ? ageAsInt : 20; 
-    
-    WriteLine("Entrer votre email :");
-    string? email = ReadLine();
-    if (string.IsNullOrEmpty(email)) email = "default@email.com";
-
+    string nom = ReadString("Entrer votre nom", "Xx_Graou_xX");
+    string email = ReadString("Entrer votre email", "default@email.com");
+    int age  = ReadInt("Entrer votre age", 20);
     playerId = sqlDB.AddNewPlayer(nom, age, email);
 }
 
@@ -83,21 +65,11 @@ void Login()
 {
     Clear();
     WriteLine("——— Login ———");
-    
-    WriteLine("Entrer votre nom :");
-    string? name = ReadLine();
-    if (string.IsNullOrEmpty(name)) name = "Xx_Graou_xX";
-
-    WriteLine("Entrer votre email :");
-    string? email = ReadLine();
-    if (string.IsNullOrEmpty(email)) email = "default@email.com";
-    
+    string name = ReadString("Entrer votre nom", "Xx_Graou_xX");
+    string email = ReadString("Entrer votre email", "default@email.com");
     playerId = sqlDB.GetPlayerId(name, email);
-
-    if (playerId.HasValue)
-        GameMenu();
-    else
-        WriteLine("Failed login. Quitting...");
+    if (!playerId.HasValue) WriteLine("Failed login. Quitting...");
+    while (playerId.HasValue) GameMenu();
 }
 
 void GameMenu()
@@ -113,56 +85,77 @@ void GameMenu()
         string command = ReadLine() ?? "Quit";
         switch (command)
         {
-            case "1":
-                partyId = sqlDB.CreateParty(7);
-                if (partyId.HasValue)
-                {
-                    int cachedPlayerId = playerId.Value;
-                    int cachedPartyId = partyId.Value;
-                    mongoDB.AddPlayer(playerId.Value, partyId.Value);
-                    PartyMenu();
-                    mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
-                }
-                break;
-            case "2":
-                Clear();
-                partyIds = sqlDB.GetPartyList();
-                WriteLine("——— Parties ———");
-                foreach (int party in partyIds)
-                    WriteLine($"Party Id: [{party}]");
-                WriteLine("[Any] to quit");
-                ReadKey();
-                break;
-            case "3":
-                string? choice = null;
-                while (choice == null)
-                {
-                    Clear();
-                    WriteLine("——— Join ———");
-                    WriteLine("Enter partyId to join :");
-                    WriteLine("[q] - Quitter]");
-                    choice = ReadLine();
-                    if (choice != null)
-                    {
-                        if (int.TryParse(choice, out int id) && partyIds.Contains(id))
-                        {
-                            partyId = id;
-                            int cachedPlayerId = playerId.Value;
-                            int cachedPartyId = partyId.Value;
-                            mongoDB.AddPlayer(playerId.Value, partyId.Value);
-                            PartyMenu();
-                            mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
-                        }
-                    }
-                }
-                break;
-            case "q":
+            case "1": CreatePartyMenu(); break;
+            case "2": DisplayPartyListMenu(); break;
+            case "3": JoinPartyMenu(); break;
+            case "q": { playerId = null; break; }
+        }
+    }
+}
+
+void CreatePartyMenu()
+{
+    int? newPartyId = sqlDB.CreateParty(7);
+    if (newPartyId.HasValue)
+    {
+        InitParty(newPartyId.Value);
+        JoinParty(newPartyId.Value);
+    }
+    else WriteLine("Failed create party.");
+}
+
+void DisplayPartyListMenu()
+{
+    Clear();
+    partyIds = sqlDB.GetPartyList();
+    WriteLine("——— Parties ———");
+    foreach (int party in partyIds)
+        WriteLine($"Party Id: [{party}]");
+    WriteLine("[Any] to quit");
+    ReadKey();
+}
+
+void JoinPartyMenu()
+{
+    string? choice = null;
+    while (choice == null)
+    {
+        Clear();
+        WriteLine("——— Join ———");
+        WriteLine("Enter partyId to join :");
+        WriteLine("[q] - Quitter]");
+        choice = ReadLine();
+        if (choice != null)
+        {
+            if (int.TryParse(choice, out int id) && partyIds.Contains(id))
             {
-                playerId = null;
-                break;
+                partyId = id;
+                int cachedPlayerId = playerId.Value;
+                int cachedPartyId = partyId.Value;
+                mongoDB.AddPlayer(playerId.Value, partyId.Value);
+                PartyMenu();
+                mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
             }
         }
     }
+}
+
+
+void InitParty(int partyIdToInit)
+{
+    WriteLine($"Initializing party {partyIdToInit}...");
+    mongoDB.InitShipPosition(partyIdToInit,sqlDB.GetInitialShipsPositions(partyIdToInit));
+}
+
+void JoinParty(int partyIdToJoin)
+{
+    WriteLine($"Joining party {partyIdToJoin}...");
+    partyId = partyIdToJoin;
+    int cachedPlayerId = playerId.Value;
+    int cachedPartyId = partyId.Value;
+    mongoDB.AddPlayer(cachedPlayerId, cachedPartyId);
+    PartyMenu();
+    mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
 }
 
 void PartyMenu()
@@ -179,25 +172,25 @@ void PartyMenu()
         switch (command)
         {
             case "1":
-                {
-                    var destination = ReadMove();
-                    if (destination.HasValue) mongoDB.MovePlayer(playerId.Value, partyId.Value, destination.Value);
-                    break;
-                }
+            {
+                var destination = ReadMove();
+                if (destination.HasValue) mongoDB.MovePlayer(playerId.Value, partyId.Value, destination.Value);
+                break;
+            }
             case "2":
-                {
-                    var direction = ReadDirection();
-                    if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value, direction.Value);
-                    break;
-                }
+            {
+                var direction = ReadDirection();
+                if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value, direction.Value);
+                break;
+            }
             case "3":
-                {
-                    var scores = mongoDB.GetScores(partyId.Value);
-                    WriteLine("——— Score ———");
-                    foreach (var scoreEntry in scores) 
-                        WriteLine($"{scoreEntry.playerName}|{scoreEntry.score}");
-                    break;
-                }
+            {
+                var scores = mongoDB.GetScores(partyId.Value);
+                WriteLine("——— Score ———");
+                foreach (var scoreEntry in scores) 
+                    WriteLine($"{scoreEntry.playerName}|{scoreEntry.score}");
+                break;
+            }
             case "q": { partyId = null; break; }
         }
     }
@@ -219,6 +212,28 @@ Vector3? ReadDirection()
     WriteLine("Choisissez une direction (x,y,z)");
     WriteLine("ou appuyez sur [q] pour annuler");
     return ReadVector3();
+}
+
+
+
+void Clear()
+{
+    if (withClear) Console.Clear();
+}
+
+string ReadString(string message, string defaultValue)
+{
+    WriteLine(message);
+    string? str = ReadLine();
+    if (string.IsNullOrEmpty(str)) str = defaultValue;
+    return str;
+}
+
+int ReadInt(string message, int defaultValue)
+{
+    WriteLine(message);
+    string? str = ReadLine();
+    return string.IsNullOrEmpty(str) ? defaultValue : int.TryParse(str, out int input) ? input : defaultValue;
 }
 
 Vector3? ReadVector3()
@@ -245,10 +260,3 @@ Vector3? ReadVector3()
     }
     return null;
 }
-
-void Clear()
-{
-    if (WithClear) Console.Clear();
-}
-
-

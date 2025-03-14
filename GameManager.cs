@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Projet4;
 
 public class GameManager
@@ -14,13 +12,13 @@ public class GameManager
     
     public static string Create3DShips(int mapSize)
     {
-        List<Vector3> allVectorBoat = new List<Vector3>();
+        List<List<Vector3>> allVectorBoat = new List<List<Vector3>>();
         
-        allVectorBoat.AddRange(CreateSegmentShip(mapSize));
-        allVectorBoat.AddRange(CreateSquareShip(mapSize));
-        allVectorBoat.AddRange(CreateCubeShip(mapSize));
+        allVectorBoat.Add(CreateSegmentShip(mapSize));
+        allVectorBoat.Add(CreateSquareShip(mapSize));
+        allVectorBoat.Add(CreateCubeShip(mapSize));
 
-        return CreateJsonFromVector3List(allVectorBoat);
+        return Vector3Converter.CreateJsonFromListOfListVector3(allVectorBoat);
     }
 
     static List<Vector3> CreateSegmentShip(int mapSize)
@@ -98,45 +96,17 @@ public class GameManager
         int startY = random.Next(0, mapSize - cubeSize + 1);
         int startZ = random.Next(0, mapSize - cubeSize + 1);
 
-        List<Vector3> vector3List = new List<Vector3>();
-        
+        List<Vector3> vector3List = [];
         for (int x = startX; x < startX + cubeSize; x++)
-        {
-            for (int y = startY; y < startY + cubeSize; y++)
-            {
-                for (int z = startZ; z < startZ + cubeSize; z++)
-                {
-                    vector3List.Add(new Vector3(x, y, z));
-                }
-            }
-        }
+        for (int y = startY; y < startY + cubeSize; y++)
+        for (int z = startZ; z < startZ + cubeSize; z++) 
+            vector3List.Add(new Vector3(x, y, z));
+        
         return vector3List;
     }
 
-    static string CreateJsonFromVector3List(List<Vector3> vector3List)
+    public static Vector3? ShootAsCollide()
     {
-        StringBuilder jsonBuilder = new StringBuilder();
         
-        jsonBuilder.AppendLine("[");
-        
-        for (int i = 0; i < vector3List.Count; i++)
-        {
-            Vector3 vector3 = vector3List[i];
-            
-            jsonBuilder.Append(vector3.ToString());
-            
-            if (i < vector3List.Count - 1)
-            {
-                jsonBuilder.AppendLine(",");
-            }
-            else
-            {
-                jsonBuilder.AppendLine();
-            }
-        }
-        
-        jsonBuilder.AppendLine("]");
-
-        return jsonBuilder.ToString();
-    }
+    } 
 }
