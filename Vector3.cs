@@ -2,9 +2,10 @@ using System.Text.Json;
 using System.Text;
 using MongoDB.Bson;
 
-public record struct Vector3(float x, float y, float z)
+public record struct Vector3(int x, int y, int z)
 {
     public override string ToString() => $"{{\"x\":{x}, \"y\":{y}, \"z\":{z}}}";
+    public string ToPrettyString() => $"({x},{y},{z})";
 }
 
 public static class Vector3Converter
@@ -86,9 +87,9 @@ public static class Vector3Converter
             {
                 var vectorDoc = vectorBson.AsBsonDocument;
 
-                float x = (float)vectorDoc["x"].ToDouble();
-                float y = (float)vectorDoc["y"].ToDouble();
-                float z = (float)vectorDoc["z"].ToDouble();
+                int x = vectorDoc["x"].ToInt32();
+                int y = vectorDoc["y"].ToInt32();
+                int z = vectorDoc["z"].ToInt32();
                 
                 vectorList.Add(new Vector3(x, y, z));
             }

@@ -7,11 +7,10 @@
 // ✅ Quitter une partie
 // ✅ Reprendre un partie
 // ⌛️ Déroulement d'une partie
-//      ⌛ Mouvement
-//      ⌛ Tir
-//      TODO Affichage du classement
+//      ✅ Mouvement
+//      ❌ Tir
+//      ✅ Affichage du classement
 // ❌ Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
-
 
 using System.Text.RegularExpressions;
 using static System.Console;
@@ -20,7 +19,7 @@ using static System.Console;
 const bool withClear = false;
 
 SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
-MongoDBManager mongoDB = new("AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
+MongoDBManager mongoDB = new(sqlDB,"AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
 int? playerId = null;
 int? partyId = null;
 List<int> partyIds = [];
@@ -130,11 +129,8 @@ void JoinPartyMenu()
             if (int.TryParse(choice, out int id) && partyIds.Contains(id))
             {
                 partyId = id;
-                int cachedPlayerId = playerId.Value;
-                int cachedPartyId = partyId.Value;
                 mongoDB.AddPlayer(playerId.Value, partyId.Value);
                 PartyMenu();
-                mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
             }
         }
     }
@@ -151,11 +147,10 @@ void JoinParty(int partyIdToJoin)
 {
     WriteLine($"Joining party {partyIdToJoin}...");
     partyId = partyIdToJoin;
-    int cachedPlayerId = playerId.Value;
-    int cachedPartyId = partyId.Value;
-    mongoDB.AddPlayer(cachedPlayerId, cachedPartyId);
+    mongoDB.AddPlayer(playerId.Value, partyId.Value);
+    DateTime start = DateTime.Now;
+    while ((DateTime.Now - start).TotalMilliseconds < 3000) { }
     PartyMenu();
-    mongoDB.RemovePlayer(cachedPlayerId, cachedPartyId);
 }
 
 void PartyMenu()
@@ -163,11 +158,11 @@ void PartyMenu()
     while (partyId.HasValue && playerId.HasValue)
     {
         Vector3 position = mongoDB.GetPlayerPosition(partyId.Value, playerId.Value);
-        int shipCount = mongoDB.GetShipCount(partyId.Value);
-        int score = mongoDB.GetScore(partyId.Value, playerId.Value);
+        int shipCount = default;//mongoDB.GetShipCount(partyId.Value);
+        int score = default; //mongoDB.GetScore(partyId.Value, playerId.Value);
         Clear();
         WriteLine("——— Party ———");
-        WriteLine($"  Location: {position}");
+        WriteLine($"  Location: {position.ToPrettyString()}");
         WriteLine($"     Score: {score}");
         WriteLine($"Ship alive: {shipCount}");
         WriteLine("       [1] - Se déplacer");
@@ -186,7 +181,13 @@ void PartyMenu()
             case "2":
             {
                 var direction = ReadDirection();
-                if (direction.HasValue) mongoDB.Shoot(playerId.Value, partyId.Value,position, direction.Value);
+                if (direction.HasValue)
+                {
+                    if (mongoDB.Shoot(playerId.Value, partyId.Value, position, direction.Value)) 
+                        WriteLine("Hit");
+                    else 
+                        WriteLine("Miss");
+                }
                 break;
             }
             case "3":

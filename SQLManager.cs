@@ -80,6 +80,15 @@ public class SQLManager
         }
     }
 
+    public string GetPlayerName(int  playerId)
+    {
+        string query = $"SELECT nom FROM Gr5_joueur WHERE joueur_id = {playerId}";
+        using MySqlDataReader dataReader = new MySqlCommand(query, _connection).ExecuteReader();
+        dataReader.Read();
+        string name = dataReader.GetString(0);
+        return name;
+    }
+    
     public int GetPlayerId(string name, string email)
     {
         string query = "SELECT joueur_id FROM Gr5_joueur WHERE nom = @name AND mail = @email;";
@@ -92,7 +101,7 @@ public class SQLManager
         using MySqlDataReader dataReader = command.ExecuteReader();
         dataReader.Read();
         int playerId = dataReader.GetInt32(0);
-        dataReader.Close();
+        
         return playerId;
     }
 

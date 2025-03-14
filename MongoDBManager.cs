@@ -4,13 +4,15 @@ using Projet4;
 
 public class MongoDBManager
 {
+    readonly SQLManager _sql;
     readonly MongoClient _client;
     readonly IMongoDatabase _database;
     readonly IMongoCollection<BsonDocument> _personnages;
     readonly IMongoCollection<BsonDocument> _ships;
 
-    public MongoDBManager(string username, string password, string address, string database)
+    public MongoDBManager(SQLManager sql, string username, string password, string address, string database)
     {
+        _sql = sql;
         string connectionString = $"mongodb://{username}:{password}@{address}:{database}/";
         _client = new MongoClient(connectionString);
         _database = _client.GetDatabase("USRS6N_2025");
@@ -21,11 +23,7 @@ public class MongoDBManager
     public void AddPlayer(int playerId, int partyId)
     {
         bool exist = false; // TODO
-        if (exist)
-        {
-            // TODO
-        }
-        else
+        if(!exist)
         {
             var defaultPosition = new BsonDocument { { "x", 0 }, { "y", 0 }, { "z", 0 } };
             var document = new BsonDocument
@@ -41,19 +39,18 @@ public class MongoDBManager
         }
     }
     
-    public void RemovePlayer(int playerId, int partyId)
+    //Graou's work here is done
+    public Vector3 GetPlayerPosition(int partyId, int playerId)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
             Builders<BsonDocument>.Filter.Eq("Player_ID", playerId)
         );
-        _personnages.DeleteOne(filter);
-    }
-
-    public Vector3 GetPlayerPosition(int partyId, int playerId)
-    {
-        // TODO
-        throw new NotImplementedException();
+        var playerPositionBson = _personnages.Find(filter).FirstOrDefault().GetValue("Position");
+        int x = playerPositionBson["x"].AsInt32;
+        int y = playerPositionBson["y"].AsInt32;
+        int z = playerPositionBson["z"].AsInt32;
+        return new Vector3(x, y, z);
     }
     
     public void MovePlayer(int playerId, int partyId, Vector3 position)
@@ -79,13 +76,40 @@ public class MongoDBManager
 
         if (positionHit == null)
             return false;
-        
-        foreach (var shipPositions in shipsPositions)
-            shipPositions.Remove(from);
+
+        List<List<Vector3>> shipsToDetroy = [];
+        foreach (List<Vector3> shipPositions in shipsPositions)
+        {
+            shipPositions.Remove(positionHit.Value);
+            if (shipPositions.Count == 0)
+            {
+                ShipKilled(playerId, partyId);
+                shipsToDetroy.Append(shipPositions);
+            }
+        }
+
+        foreach (List<Vector3> ship in shipsToDetroy)
+        {
+            shipsPositions.Remove(ship);
+        }
         
         UpdateShipPosition(partyId, shipsPositions);
         
         return true;
+    }
+
+    void ShipKilled(int partyId, int playerId)
+    {
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
+            Builders<BsonDocument>.Filter.Eq("Player_ID", playerId)
+        );
+
+        var update = Builders<BsonDocument>.Update.Inc("Nb_Vaisseau_Destroy", 1);
+
+        _personnages.UpdateOne(filter, update);
+        
+        Console.WriteLine("Ship detroy!");
     }
 
     void RegisterShootForPlayer(int playerId, int partyId)
@@ -96,7 +120,7 @@ public class MongoDBManager
         );
 
         var update = Builders<BsonDocument>.Update.Inc("Nb_Tir", 1);
-
+        
         _personnages.UpdateOne(filter, update);
     }
 
@@ -108,15 +132,23 @@ public class MongoDBManager
         {
             new BsonDocument("$group", new BsonDocument
             {
-                { "_id", "$PlayerID" },
-                { "totalDestroyed", new BsonDocument("$sum", "$NbVaisseauDestroy") }
+                { "_id", "$Player_ID" },
+                { "totalDestroyed", new BsonDocument("$sum", "$Nb_Vaisseau_Destroy") }
             }),
             new BsonDocument("$sort", new BsonDocument("totalDestroyed", -1))
         };
 
         List<BsonDocument> results = _personnages.Aggregate<BsonDocument>(pipeline).ToList();
 
-        Console.WriteLine(results);
+        
+        
+        foreach (BsonDocument result in results)
+        {
+            int playerId = result["_id"].AsInt32;
+            int score = result["totalDestroyed"].AsInt32;
+            string playerName = _sql.GetPlayerName(playerId);
+            scores.Add((playerName, score));
+        }
         
         return scores;
     }
@@ -134,6 +166,7 @@ public class MongoDBManager
 
     public List<List<Vector3>> GetShipsPositions(int partyId)
     {
+        // TODO Fix It found a list of list of list in DB : Too deep
         var filter = Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId);
         
         var document = _ships.Find(filter).FirstOrDefault();
@@ -153,10 +186,10 @@ public class MongoDBManager
         _ships.UpdateOne(filter, update);
     }
 
+    //Graou's work is done here
     public int GetShipCount(int partyId)
     {
-        // TODO
-        throw new NotImplementedException();
+        return GetShipsPositions(partyId).Count;
     }
 
     public int GetScore(int partyId, int playerId)
