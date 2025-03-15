@@ -6,10 +6,11 @@
 // ✅ Lancer une partie
 // ✅ Quitter une partie
 // ✅ Reprendre un partie
-// ⌛️ Déroulement d'une partie
+// ✅ Déroulement d'une partie
 //      ✅ Mouvement
-//      ❌ Tir
+//      ✅ Tir
 //      ✅ Affichage du classement
+// ✅ Timer
 // ❌ Vidéo : Tester des parties à 3 joueurs en simultané sur le serveur de l'Enjmin
 
 using System.Text.RegularExpressions;
@@ -33,6 +34,8 @@ void HomeMenu()
     string? command = null;
     while (command == null)
     {
+        partyIds = sqlDB.GetPartyList();
+        
         Clear();
         WriteLine("Bienvenue sur Battleship");
         WriteLine("——— Home ———");
@@ -158,8 +161,8 @@ void PartyMenu()
     while (partyId.HasValue && playerId.HasValue)
     {
         Vector3 position = mongoDB.GetPlayerPosition(partyId.Value, playerId.Value);
-        int shipCount = default;//mongoDB.GetShipCount(partyId.Value);
-        int score = default; //mongoDB.GetScore(partyId.Value, playerId.Value);
+        int shipCount = mongoDB.GetShipCount(partyId.Value);
+        int score = mongoDB.GetScore(partyId.Value, playerId.Value);
         Clear();
         WriteLine("——— Party ———");
         WriteLine($"  Location: {position.ToPrettyString()}");
@@ -170,6 +173,15 @@ void PartyMenu()
         WriteLine("       [3] - Afficher les scores");
         WriteLine("       [q] - Quitter");
         string command = ReadLine() ?? "Quit";
+        
+        if (IsPartyFinish(partyId.Value))
+        {
+            WriteLine("——— Party Finish! ———");
+            sqlDB.EndParty(partyId.Value);
+            DisplayPartyScore(partyId.Value);
+            command = "q"; //L'éclaire de génie à 2h du mat
+        }
+        
         switch (command)
         {
             case "1":
@@ -192,10 +204,7 @@ void PartyMenu()
             }
             case "3":
             {
-                var scores = mongoDB.GetScores(partyId.Value);
-                WriteLine("——— Score ———");
-                foreach (var scoreEntry in scores) 
-                    WriteLine($"{scoreEntry.playerName}|{scoreEntry.score}");
+                DisplayPartyScore(partyId.Value);
                 break;
             }
             case "q": { partyId = null; break; }
@@ -219,6 +228,14 @@ Vector3? ReadDirection()
     WriteLine("Choisissez une direction (x,y,z)");
     WriteLine("ou appuyez sur [q] pour annuler");
     return ReadVector3();
+}
+
+void DisplayPartyScore(int partyId)
+{
+    var scores = mongoDB.GetScores(partyId);
+    WriteLine("——— Score ———");
+    foreach (var scoreEntry in scores) 
+        WriteLine($"{scoreEntry.playerName}|{scoreEntry.score}");
 }
 
 void Clear()
@@ -263,4 +280,22 @@ Vector3? ReadVector3()
         }
     }
     return null;
+}
+
+bool IsPartyFinish(int partyId)
+{
+    if (sqlDB.IsTimerFinish(partyId))
+    {
+        WriteLine("Time's up!");
+        return true;
+    } 
+    else if (mongoDB.GetShipCount(partyId) <= 0)
+    {
+        WriteLine("All boat have been destroy!");
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }

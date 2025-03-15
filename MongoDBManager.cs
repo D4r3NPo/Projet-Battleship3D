@@ -22,8 +22,7 @@ public class MongoDBManager
 
     public void AddPlayer(int playerId, int partyId)
     {
-        bool exist = false; // TODO
-        if(!exist)
+        if(!IsPlayerInParty(playerId, partyId))
         {
             var defaultPosition = new BsonDocument { { "x", 0 }, { "y", 0 }, { "z", 0 } };
             var document = new BsonDocument
@@ -37,6 +36,16 @@ public class MongoDBManager
             };
             _personnages.InsertOne(document);
         }
+    }
+
+    private bool IsPlayerInParty(int playerId, int partyId)
+    {
+        var filter = Builders<BsonDocument>.Filter.And(
+            Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId),
+            Builders<BsonDocument>.Filter.Eq("Player_ID", playerId)
+        );
+        
+        return _personnages.Find(filter).Any();
     }
     
     //Graou's work here is done
@@ -77,20 +86,15 @@ public class MongoDBManager
         if (positionHit == null)
             return false;
 
-        List<List<Vector3>> shipsToDetroy = [];
-        foreach (List<Vector3> shipPositions in shipsPositions)
+        for (int i = shipsPositions.Count - 1; i >= 0; i--)
         {
-            shipPositions.Remove(positionHit.Value);
-            if (shipPositions.Count == 0)
+            shipsPositions[i].Remove(positionHit.Value);
+        
+            if (shipsPositions[i].Count == 0)
             {
-                ShipKilled(playerId, partyId);
-                shipsToDetroy.Append(shipPositions);
+                ShipKilled(partyId, playerId);
+                shipsPositions.RemoveAt(i);
             }
-        }
-
-        foreach (List<Vector3> ship in shipsToDetroy)
-        {
-            shipsPositions.Remove(ship);
         }
         
         UpdateShipPosition(partyId, shipsPositions);
@@ -124,12 +128,13 @@ public class MongoDBManager
         _personnages.UpdateOne(filter, update);
     }
 
-    public List<(string playerName, int score)> GetScores(int partyId)
+    public List<(int playerId, string playerName, int score)> GetScores(int partyId)
     {
-        List<(string playerName, int score)> scores = [];
+        List<(int playerId, string playerName, int score)> scores = [];
         
         var pipeline = new[]
         {
+            new BsonDocument("$match", new BsonDocument("Partie_ID", partyId)),
             new BsonDocument("$group", new BsonDocument
             {
                 { "_id", "$Player_ID" },
@@ -147,7 +152,7 @@ public class MongoDBManager
             int playerId = result["_id"].AsInt32;
             int score = result["totalDestroyed"].AsInt32;
             string playerName = _sql.GetPlayerName(playerId);
-            scores.Add((playerName, score));
+            scores.Add((playerId, playerName, score));
         }
         
         return scores;
@@ -158,7 +163,7 @@ public class MongoDBManager
         var document = new BsonDocument
         {
             { "Partie_ID", partyId },
-            { "Ships_Position", new BsonArray {Vector3Converter.ConvertListOfListsToBsonArray(positions)} },
+            { "Ships_Position", Vector3Converter.ConvertListOfListsToBsonArray(positions) },
         };
 
         _ships.InsertOne(document);
@@ -175,13 +180,13 @@ public class MongoDBManager
         return Vector3Converter.ConvertBsonArrayToListOfLists(shipsPositionField);
     }
 
-    public void UpdateShipPosition(int partyId, List<List<Vector3>> positions)
+    private void UpdateShipPosition(int partyId, List<List<Vector3>> positions)
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Partie_ID", partyId)
         );
 
-        var update = Builders<BsonDocument>.Update.Inc("Ships_Position", Vector3Converter.ConvertListOfListsToBsonArray(positions));
+        var update = Builders<BsonDocument>.Update.Set("Ships_Position", Vector3Converter.ConvertListOfListsToBsonArray(positions));
 
         _ships.UpdateOne(filter, update);
     }
@@ -192,9 +197,18 @@ public class MongoDBManager
         return GetShipsPositions(partyId).Count;
     }
 
-    public int GetScore(int partyId, int playerId)
+    public int GetScore(int partyId, int requestPlayerId)
     {
-        // TODO
-        throw new NotImplementedException();
+        List<(int playerId, string playerName, int score)> scores = GetScores(partyId);
+
+        foreach ((int playerId, string playerName, int score) in scores)
+        {
+            if (playerId == requestPlayerId)
+            {
+                return score;
+            }
+        }
+        
+        return 0;
     }
 }

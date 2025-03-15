@@ -55,13 +55,14 @@ public class SQLManager
     public int? CreateParty(int mapSize)
     {
         string shipsPosition = GameManager.Create3DShips(mapSize);
-        Console.WriteLine(shipsPosition);
+
         try
         {
-            string query = "INSERT INTO Gr5_partie (jeu_id, date_debut, ship_position, map_size) VALUES ((SELECT jeu_id FROM Gr5_jeu WHERE nom = 'Battleship3D'),NOW(),@shipsPosition,@mapSize); SELECT LAST_INSERT_ID()";
+            string query = "INSERT INTO Gr5_partie (jeu_id, date_debut, ship_position, map_size) VALUES ((SELECT jeu_id FROM Gr5_jeu WHERE nom = 'Battleship3D'),@dateDebut,@shipsPosition,@mapSize); SELECT LAST_INSERT_ID()";
             
             MySqlCommand command = new MySqlCommand(query, _connection);
             
+            command.Parameters.AddWithValue("@dateDebut", DateTime.Now);
             command.Parameters.AddWithValue("@shipsPosition", shipsPosition);
             command.Parameters.AddWithValue("@mapSize", mapSize);
             
@@ -121,13 +122,13 @@ public class SQLManager
         return partyIds;
     }
 
-    public List<List<Vector3>> GetInitialShipsPositions(int partieId)
+    public List<List<Vector3>> GetInitialShipsPositions(int partyId)
     {
         string query = "SELECT ship_position FROM Gr5_partie WHERE partie_id = @partieId;";
         
         MySqlCommand command = new MySqlCommand(query, _connection);
         
-        command.Parameters.AddWithValue("@partieId", partieId);
+        command.Parameters.AddWithValue("@partieId", partyId);
         
         using MySqlDataReader result = command.ExecuteReader();
         result.Read();
@@ -136,9 +137,33 @@ public class SQLManager
 
         return Vector3Converter.ParseJsonToListOfListVector3(shipsPosition);
     }
-    
-    public List<List<Vector3>> GetShipsPositions(int partieId)
+
+    public bool IsTimerFinish(int partyId)
     {
-        return default;
+        string query = "SELECT date_debut FROM Gr5_partie WHERE partie_id = @partie_id;";
+        
+        MySqlCommand command = new MySqlCommand(query, _connection);
+        
+        command.Parameters.AddWithValue("@partie_id", partyId);
+        
+        using MySqlDataReader dataReader = command.ExecuteReader();
+        dataReader.Read();
+        DateTime startDate = dataReader.GetDateTime(0);
+        dataReader.Close();
+
+        int gameDurationMinutes = 3; //Ouais la durée de la partie en dur dans une fonction, y a quoi
+        DateTime endDate = startDate.AddMinutes(gameDurationMinutes);
+
+        return DateTime.Now >= endDate;
+    }
+
+    public void EndParty(int partyId)
+    {
+        string query = "UPDATE Gr5_partie SET state = 'Finish' WHERE partie_id = @partieId;";
+        
+        MySqlCommand command = new MySqlCommand(query, _connection);
+        command.Parameters.AddWithValue("@partieId", partyId);
+        
+        command.ExecuteNonQuery();
     }
 }
