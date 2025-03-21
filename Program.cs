@@ -17,7 +17,7 @@ using System.Text.RegularExpressions;
 using static System.Console;
 // ReSharper disable AccessToModifiedClosure
 
-const bool withClear = false;
+const bool withClear = true;
 
 SQLManager sqlDB = new("81.1.20.23", "3306", "USRS6N_1", "EtudiantJvd", "!?CnamNAQ01?!");
 MongoDBManager mongoDB = new(sqlDB,"AdminLJV", "!!DBLjv1858**", "81.1.20.23", "27017");
