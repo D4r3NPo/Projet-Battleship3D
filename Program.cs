@@ -34,8 +34,6 @@ void HomeMenu()
     string? command = null;
     while (command == null)
     {
-        partyIds = sqlDB.GetPartyList();
-        
         Clear();
         WriteLine("Bienvenue sur Battleship");
         WriteLine("——— Home ———");
@@ -122,6 +120,7 @@ void JoinPartyMenu()
     string? choice = null;
     while (choice == null)
     {
+        partyIds = sqlDB.GetPartyList();
         Clear();
         WriteLine("——— Join ———");
         WriteLine("Enter partyId to join :");
